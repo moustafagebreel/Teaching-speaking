@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>تعلم القراءة للأطفال</title>
+    <style>
+        body {
+            font-family: 'Arial', sans-serif;
+            background-color: #f0f8ff;
+            margin: 0;
+            padding: 20px;
+            text-align: center;
+        }
+        h1, h2 {
+            color: #4b0082;
+        }
+        .section {
+            background-color: #ffffff;
+            border-radius: 10px;
+            padding: 20px;
+            margin: 20px auto;
+            max-width: 600px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+        }
+        .word {
+            font-size: 36px;
+            color: #008080;
+            margin: 20px 0;
+            cursor: pointer;
+        }
+        button {
+            background-color: #ffa500;
+            border: none;
+            color: white;
+            padding: 10px 20px;
+            text-align: center;
+            text-decoration: none;
+            display: inline-block;
+            font-size: 16px;
+            margin: 4px 2px;
+            cursor: pointer;
+            border-radius: 5px;
+        }
+        #result {
+            font-size: 24px;
+            margin-top: 20px;
+        }
+        #debug {
+            font-size: 14px;
+            color: #666;
+            margin-top: 10px;
+        }
+    </style>
+</head>
+<body>
+    <h1>مرحبًا بكم في عالم القراءة الممتع!</h1>
+    
+    <div class="section">
+        <h2>اقرأ الكلمة بصوت عالٍ</h2>
+        <div id="currentWord" class="word" onclick="speakWord()">جاري التحميل...</div>
+        <button onclick="startListening()">ابدأ القراءة</button>
+        <div id="result"></div>
+        <div id="debug"></div>
+    </div>
+
+    <script>
+        const wordsDatabase = [
+            'كتاب', 'قلم', 'مدرسة', 'شجرة', 'بيت', 'سيارة', 'طاولة', 'كرسي', 'حاسوب', 'هاتف',
+            'قمر', 'شمس', 'نجوم', 'بحر', 'جبل', 'صحراء', 'غابة', 'نهر', 'زهرة', 'فاكهة',
+            'خضار', 'لحم', 'خبز', 'ماء', 'حليب', 'عصير', 'قهوة', 'شاي', 'سكر', 'ملح',
+            'طبيب', 'مهندس', 'معلم', 'طالب', 'تاجر', 'فلاح', 'نجار', 'حداد', 'خياط', 'طباخ',
+            'أسد', 'نمر', 'فيل', 'زرافة', 'قرد', 'دب', 'ثعلب', 'أرنب', 'فأر', 'كلب',
+            'قطة', 'حصان', 'بقرة', 'خروف', 'دجاجة', 'بطة', 'عصفور', 'نسر', 'صقر', 'بومة'
+        ];
+
+        let currentWord = '';
+
+        function fetchRandomWord() {
+            return new Promise((resolve) => {
+                setTimeout(() => {
+                    const randomIndex = Math.floor(Math.random() * wordsDatabase.length);
+                    resolve(wordsDatabase[randomIndex]);
+                }, 500);
+            });
+        }
+
+        async function loadNewWord() {
+            document.getElementById('currentWord').textContent = 'جاري التحميل...';
+            currentWord = await fetchRandomWord();
+            document.getElementById('currentWord').textContent = currentWord;
+        }
+
+        function startListening() {
+            const recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
+            recognition.lang = 'ar-SA';
+            recognition.interimResults = false;
+            recognition.maxAlternatives = 5;
+
+            recognition.start();
+
+            recognition.onresult = function(event) {
+                const results = event.results[0];
+                checkWord(results);
+            };
+
+            recognition.onerror = function(event) {
+                console.error('Speech recognition error', event.error);
+                document.getElementById('result').textContent = 'حدث خطأ. حاول مرة أخرى.';
+            };
+        }
+
+        function checkWord(results) {
+            let correct = false;
+            let debugInfo = 'الكلمات المسموعة: ';
+
+            for (let i = 0; i < results.length; i++) {
+                const spokenWord = results[i].transcript.trim().toLowerCase();
+                debugInfo += spokenWord + ' (' + results[i].confidence.toFixed(2) + '), ';
+
+                if (spokenWord === currentWord.trim().toLowerCase()) {
+                    correct = true;
+                    break;
+                }
+            }
+
+            document.getElementById('debug').textContent = debugInfo;
+
+            if (correct) {
+                playSound('correct');
+                document.getElementById('result').textContent = 'أحسنت! قراءة صحيحة.';
+                speakWord(`أحسنت! الكلمة الصحيحة هي ${currentWord}`);
+                setTimeout(loadNewWord, 3000);
+            } else {
+                playSound('incorrect');
+                document.getElementById('result').textContent = `حاول مرة أخرى. الكلمة الصحيحة هي: ${currentWord}`;
+                speakWord(`الكلمة الصحيحة هي ${currentWord}`);
+            }
+        }
+
+        function speakWord(text = currentWord) {
+            const utterance = new SpeechSynthesisUtterance(text);
+            utterance.lang = 'ar-SA';
+            speechSynthesis.speak(utterance);
+        }
+
+        function playSound(type) {
+            const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            const oscillator = audioContext.createOscillator();
+            const gainNode = audioContext.createGain();
+
+            oscillator.connect(gainNode);
+            gainNode.connect(audioContext.destination);
+
+            if (type === 'correct') {
+                oscillator.frequency.setValueAtTime(800, audioContext.currentTime);
+                oscillator.frequency.setValueAtTime(1000, audioContext.currentTime + 0.1);
+            } else {
+                oscillator.frequency.setValueAtTime(300, audioContext.currentTime);
+                oscillator.frequency.setValueAtTime(150, audioContext.currentTime + 0.1);
+            }
+
+            gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
+            gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.5);
+
+            oscillator.start(audioContext.currentTime);
+            oscillator.stop(audioContext.currentTime + 0.5);
+        }
+
+        loadNewWord();
+    </script>
+</body>
+</html>
